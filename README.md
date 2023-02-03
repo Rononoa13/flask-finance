@@ -2,7 +2,9 @@
 A website via which users can “buy” and “sell” stocks
 
 ## Running
-Start Flask’s built-in web server
+Start Flask’s built-in web server    
+```
 $ flask run
+```
 
 ## Specification
