@@ -1,12 +1,15 @@
 import os
 
-from cs50 import SQL
+# from cs50 import SQL
 from flask import Flask, flash, redirect, render_template, request, session
+from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from helpers import apology, login_required, lookup, usd
+
+import database
 
 # Configure application
 app = Flask(__name__)
@@ -20,7 +23,12 @@ app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
 # Configure CS50 Library to use SQLite database
-db = SQL("sqlite:///finance.db")
+# Configure sqlalchemy to use sqlite database
+app.config['SECRET_KEY'] = "finance"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finance.db'
+
+db = SQLAlchemy()
+db.init_app(app)
 
 # Make sure API key is set
 if not os.environ.get("API_KEY"):
@@ -114,7 +122,41 @@ def quote():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
-    return apology("TODO")
+    if request.method == "POST":
+        # Add the user's entry to ...
+        username = request.form.get("username")
+        password = request.form.get("password")
+        confirmation = request.form.get("confirmation")
+
+        # Apology if the user’s input is blank or the username already exists.
+        # if username == '':
+        if not username:
+            return apology("provide correct username", 403)
+        
+        # Render an apology if either input is blank or the passwords do not match.
+        # if password == '':
+        if not password:
+            return apology("provide password", 403)
+        
+        if not confirmation:
+            return apology("Provide confirmation password")
+
+        if password != confirmation:
+            return apology("Password don't match", 403)
+        
+        hash = generate_password_hash(password)
+
+        try:
+            # INSERT INTO table_name (column1, column2 ...) VALUES (value1, value2, ...)
+            new_user = database.add_user(username, hash)
+        except KeyError:
+            return apology("USERNAME ALREADY EXIST")
+
+        session["user_id"] = new_user
+
+        return render_template("register.html")
+    else:
+        return render_template("register.html")
 
 
 @app.route("/sell", methods=["GET", "POST"])
