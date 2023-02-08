@@ -1,15 +1,26 @@
 import os
 
 # from cs50 import SQL
-from flask import Flask, flash, redirect, render_template, request, session
+from flask import Flask, flash, redirect, render_template, request, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.security import check_password_hash, generate_password_hash
+from datetime import datetime
 
 from helpers import apology, login_required, lookup, usd
 
 import database
+
+import json
+"""
+Apparently directly using jsonify from Flask did not as it could not 
+serialize the Stream object in `user_cash_from_db`. When doing jsonify(user_cash_from_db)
+Error:  TypeError: Object of type Stream is not JSON serializable
+
+Using jsonpickle did the job. Below code is working:
+"""
+import jsonpickle
 
 # Configure application
 app = Flask(__name__)
@@ -55,7 +66,46 @@ def index():
 @login_required
 def buy():
     """Buy shares of stock"""
-    return apology("TODO")
+    if request.method == "GET":
+        return render_template("buy.html")
+    else:
+        symbol = request.form.get("symbol")
+
+        # Render an apology if the input is blank or the symbol does not exist 
+        if not symbol:
+            return apology("Must provide symbol")
+        
+        stock = lookup(symbol)
+        if not stock:
+            return apology("Symbol does not exist.")
+
+        shares = int(request.form.get("shares"))
+        if shares < 0:
+            return apology("Input positive number")
+
+        transaction_value = shares * stock["price"]
+
+        user_id = session["user_id"]
+      
+        user_cash_from_db = database.get_cash(user_id)
+
+        # Get value from cash column from users table in database
+        user_cash = user_cash_from_db['cash']
+        
+        if user_cash < transaction_value:
+            return apology("Not enough balance.")
+
+        update_cash = user_cash - transaction_value
+        # UPDATE users SET cash = ? WHERE id = ?
+        database.update_cash(update_cash, user_id)
+
+        current_date = datetime.now()
+
+        # INSERT data into transaction table
+        database.add_entry_in_transaction(user_id, stock["symbol"], shares, stock["price"], current_date)
+        # Redirect user to home page
+        flash("Congratulation, you bought the stock.")
+        return redirect("/")
 
 
 @app.route("/history")
@@ -85,6 +135,7 @@ def login():
 
         # Query database for username
         rows = database.get_user(request.form.get("username"))
+        print(f"Rows - {rows}")
 
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(rows[0]["hash"], request.form.get("password")):
@@ -120,14 +171,12 @@ def quote():
         return render_template("quote.html")
     else:
         symbol = request.form.get("symbol")
-        print(f"Symbol - {symbol}")
-
+  
         if not symbol:
             return apology("Must give symbol")
 
         stock = lookup(symbol)
-        print(f"stock, {stock}")
-
+        
         if not stock:
             return apology("Symbol does not exist.")
         
@@ -164,6 +213,7 @@ def register():
         try:
             # INSERT INTO table_name (column1, column2 ...) VALUES (value1, value2, ...)
             new_user = database.add_user(username, hash)
+            print(f"New user - {new_user}")
         except KeyError:
             return apology("USERNAME ALREADY EXIST")
 
