@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    History
+{% endblock %}
+
+{% block main %}
+<h2>History</h2>
+<br>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col">Symbol</th>
+            <th scope="col">Type</th>
+            <th scope="col">Share</th>
+            <th scope="col">Share Price</th>
+            <th scope="col">Transaction Price</th>
+            <th scope="col">Time</th>     
+        </tr>
+    </thead>
+    <!--  -->
+    <tbody>
+        {% for row in transaction_db %}
+        <tr>
+            <td>{{row['symbol']}}</td>
+            <td></td>
+            <td>{{ row['shares'] }}</td>
+            <td></td>
+            <!-- Price is renderd from database, should be directed from API itself -->
+            <td>{{row['price']}}</td> 
+            <td>{{ row['date'] }}</td>
+            
+        </tr>
+        {% endfor %}
+    </tbody>
+    
+</table>
+
+{% endblock %}
